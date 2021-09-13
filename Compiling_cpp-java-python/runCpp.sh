@@ -1,12 +1,13 @@
-#!/bin/bash
+#!/bin/sh
 
-# Filename and flag passed in as argument. Flag is used for recompilation.
+# Filename and flag passed in as argument.
 fileName=$1
-flag=$2
 
 # Color Codes
 BLUE='\033[1;34m'
 YELLOW='\033[1;33m'
+RED='\033[1;31m'
+GREEN='\033[1;32m'
 
 # Absolute path to the file
 DIR="$(dirname "$(readlink -f "$fileName")")"
@@ -21,8 +22,7 @@ execute() {
 
 compile() {
     echo "${YELLOW}Compiling..."
-    g++ -std=c++17 "$fileName".cpp -o "$fileName".out
-    echo "Done!"
+    g++ -std=c++17 "$fileName".cpp -o "$fileName".out 
     execute
     # move the bin file to the output directory
     mv *.out "$DIR_OUT"
@@ -35,8 +35,7 @@ execute_bin() {
 }
 
 add_or_delete_lines() {
-    if [ "$1" = "add" ] 
-    then
+    if [ "$1" = "add" ]; then
         # Adding these lines to the cpp file
         sed -i '2i#define LOCAL_DEBUG_IN' "$fileName".cpp
         sed -i '3i#define LOCAL_DEBUG_OUT' "$fileName".cpp
@@ -52,19 +51,11 @@ do_stuff() {
     add_or_delete_lines "dlt"
 }
 
-# To handle case when we need to recompile and run the file, we will check the flag
 # If bin folder doesn't exist, create one and compile the cpp file
 # If it exists, check it has been compiled already or not
 # If it's already compiled just execute the bin file, compile and execute otherwise
-if [ "$flag" = "recompile" ]
-then
-    rm -r out/"$fileName".*
-    do_stuff
-else
-if [ -d "$DIR_OUT" ]
-    then
-        if [ -f "$DIR_OUT"/"$fileName".out ]
-        then
+if [ -d "$DIR_OUT" ]; then
+        if [ -f "$DIR_OUT"/"$fileName".out ]; then
             execute_bin
         else
             do_stuff
@@ -73,6 +64,5 @@ if [ -d "$DIR_OUT" ]
         mkdir "$DIR_OUT"
         do_stuff
     fi
-fi
 
 echo '\n'
