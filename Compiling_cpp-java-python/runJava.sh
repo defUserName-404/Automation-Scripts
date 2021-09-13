@@ -9,7 +9,7 @@ BLUE='\033[1;34m'
 YELLOW='\033[1;33m'
 
 # Absolute path to the file
-DIR=$(dirname $(readlink -f "$fileName"))
+DIR="$(dirname "$(readlink -f "$fileName")")"
 
 # Absolute path to the binary files
 DIR_OUT="$DIR"/out
