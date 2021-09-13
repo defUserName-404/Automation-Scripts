@@ -21,7 +21,7 @@ execute() {
 
 compile() {
     echo "${YELLOW}Compiling..."
-    g++ -std=c++17 $fileName.cpp -o $fileName.out
+    g++ -std=c++17 "$fileName".cpp -o "$fileName".out
     echo "Done!"
     execute
     # move the bin file to the output directory
