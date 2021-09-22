@@ -3,7 +3,7 @@
 
 ## ** This is a modified version of the grader.sh script created by Makis Arsenis.  **
 ## This is customized to fit into my workflow better.
-## GitHub link of the ouriginal author: https://github.com/marsenis/grader.git
+## GitHub link of the original author: https://github.com/marsenis/grader.git
 
 ## ****** BEGIN - Configuration *******
 
