@@ -96,7 +96,7 @@ fi
 html_files=()
 for notebook in "${notebooks[@]}"; do
     html_file="${notebook%.ipynb}.html"
-    pdf_file="${notebook%.ipynb}.pdf"
+    pdf_file="${notebook%.ipynb}_generated.pdf"
     convert_to_html "$notebook"
     convert_to_pdf "$html_file" "$pdf_file"
     html_files+=("$pdf_file")
@@ -110,11 +110,37 @@ else
 fi
 
 # Clean up intermediate files if --delete-all-after is specified
-if [ "$delete_all_after" = true ]; then
-    for html_file in "${notebooks[@]}"; do
-        rm "${html_file%.ipynb}.html"
-        rm "${html_file%.ipynb}.pdf"
-    done
+clean_up() {
+	if [ "$delete_all_after" = true ]; then
+		for html_file in "${notebooks[@]}"; do
+			html_filename="${html_file%.ipynb}.html"
+			pdf_filename="${html_file%.ipynb}_generated.pdf"
+			if [ -e "$html_filename" ]; then
+				rm "$html_filename"
+			fi
+			if [ -e "$pdf_filename" ]; then
+				rm "$pdf_filename"
+			fi
+		done
+	fi
+}
+
+# Prompt the user to delete the generated files
+if [ "$delete_all_after" = false ]; then
+    read -p "Do you want to delete the generated HTML and PDF files? (yes/no): " delete_response
+    case $delete_response in
+        [Yy]*)
+			delete_all_after=true
+            clean_up
+			;;
+        *)
+            echo "Generated files were not deleted."
+            ;;
+    esac
+else
+	clean_up
 fi
 
+echo
+echo
 echo "Conversion complete. Output PDF: $output_pdf"
