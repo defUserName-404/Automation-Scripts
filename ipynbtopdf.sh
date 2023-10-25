@@ -22,20 +22,12 @@ if ! command -v wkhtmltopdf &>/dev/null || ! command -v cpdf &>/dev/null || ! co
     exit 1
 fi
 
-# Function to convert Jupyter notebook to HTML
-convert_to_html() {
-    jupyter nbconvert --to html "$1"
-}
-
-# Function to convert HTML to PDF
-convert_to_pdf() {
-    wkhtmltopdf "$1" "$2"
-}
-
 # Process command line arguments
 output_pdf="Book.pdf"
 notebooks=()
 delete_all_after=false
+default_margin="2mm 2mm 2mm 2mm"
+margins=""
 
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -50,6 +42,32 @@ while [[ $# -gt 0 ]]; do
             delete_all_after=true
             shift
             ;;
+		-m|--margin)
+            margins="$2"
+            shift
+            shift
+            ;;
+        --margin-top)
+            margin_top="$2"
+            shift
+            shift
+            ;;
+        --margin-right)
+            margin_right="$2"
+            shift
+            shift
+            ;;
+        --margin-bottom)
+            margin_bottom="$2"
+            shift
+            shift
+            ;;
+        --margin-left)
+            margin_left="$2"
+            shift
+            shift
+            ;;
+
         -h|--help)
           display_help
           exit 0
@@ -91,6 +109,33 @@ if [ -e "$output_pdf" ]; then
         esac
     done
 fi
+
+# If margin values are not provided, use default margins
+if [ -z "$margins" ]; then
+    margins="$default_margin"
+fi
+
+# Extract margin values
+margin_values=($margins)
+if [ "${#margin_values[@]}" -eq 4 ]; then
+    margin_top="${margin_values[0]}"
+    margin_right="${margin_values[1]}"
+    margin_bottom="${margin_values[2]}"
+    margin_left="${margin_values[3]}"
+else
+    echo "Error: Specify all four margin values (top right bottom left) using -m or --margin."
+    exit 1
+fi
+
+# Function to convert Jupyter notebook to HTML
+convert_to_html() {
+    jupyter nbconvert --to html "$1"
+}
+
+# Function to convert HTML to PDF
+convert_to_pdf() {
+    wkhtmltopdf --margin-top "$margin_top" --margin-right "$margin_right" --margin-bottom "$margin_bottom" --margin-left "$margin_left" "$1" "$2"
+}
 
 # Convert each notebook to HTML and then to PDF
 html_files=()
