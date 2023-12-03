@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 
 
+from enum import Enum
 import os
+import shutil
 import subprocess
 from typing import List, Tuple, Optional
+
+
+class User_Type(Enum):
+    ROOT = 0
+    REGULAR_USER = 1
 
 
 def show_help() -> None:
@@ -28,24 +35,24 @@ def show_help() -> None:
 def parse_command_line_arguments() -> Tuple[Optional[str], Optional[List[str]]]:
     directory: str = os.getcwd()
     files: List[str] = []
-
+    args: List[str] = os.sys.argv
     i: int = 1
-    n: int = len(os.sys.argv)
-    print(os.sys.argv)
+    n: int = len(args)
+
     while i < n:
-        arg: str = os.sys.argv[i]
-        if arg == "--help" or n == 1:
+        arg: str = args[i]
+        if arg == "--help" or arg == "-h":
             show_help()
             return None, None
-        elif arg == "--file":
+        elif arg == "--file" or arg == "-f":
             i += 1
-            while i < n and not os.sys.argv[i].startswith("--"):
-                files.append(os.sys.argv[i])
+            while i < n and not (args[i].startswith("--") or args[i].startswith("-")):
+                files.append(args[i])
                 i += 1
             continue
-        elif arg == "--directory":
+        elif arg == "--directory" or arg == "-d":
             i += 1
-            directory = os.sys.argv[i]
+            directory = args[i]
         else:
             if n == 1:
                 show_help()
@@ -54,25 +61,24 @@ def parse_command_line_arguments() -> Tuple[Optional[str], Optional[List[str]]]:
                 files.append(arg)
             elif n == 3:
                 files.append(arg)
-                directory = os.sys.argv[i + 1]
+                directory = args[-1]
             break
         i += 1
 
     return directory, files
 
 
-def find_and_print_files(directory: str, files: List[str]) -> List[str]:
+def find_and_print_files(
+    directory: str, files: List[str], user_type: User_Type
+) -> List[str]:
     found_files: List[str] = []
 
     for pattern in files:
         # Use os.path.join to construct the full path of the directory
-        find_command: str = (
-            f'find {os.path.join(directory, "")} -type f -iname "*{pattern}*"'
-        )
+        find_command: str = f'find {os.path.join(directory, "")} -iname "*{pattern}*"'
         # Check if the script is running with sudo
-        if os.geteuid() == 0:
+        if user_type == User_Type.ROOT:
             find_command = f"sudo {find_command}"
-        print(find_command)
         try:
             # Use subprocess to run the find command
             result: subprocess.CompletedProcess[str] = subprocess.run(
@@ -85,47 +91,61 @@ def find_and_print_files(directory: str, files: List[str]) -> List[str]:
     return found_files
 
 
-def delete_files(directory: str, found_files: List[str]) -> None:
+def delete_files(directory: str, found_files: List[str], user_type: User_Type) -> None:
     if not found_files:
-        print("No matching files found in the specified directory.")
+        print("No matching files or directories found in the specified directory.")
         return
 
-    print("Found the following files:")
-    for file in found_files:
-        print(file)
+    print("Found the following files and directories:")
+    for item in found_files:
+        print(item)
 
     confirm: str = input("Do you want to proceed with the deletion? (y/n): ").lower()
 
     if confirm == "y":
-        for file in found_files:
+        for item in found_files:
+            full_path = os.path.join(directory, item)
+
             try:
                 # Use sudo if the script is running with root privileges
-                if os.geteuid() == 0:
-                    subprocess.run(["sudo", "rm", "-i", file], check=True)
+                if user_type == User_Type.ROOT:
+                    subprocess.run(["sudo", "rm", "-r", "-i", full_path], check=True)
                 else:
-                    os.remove(file)
-                    print(f"Deleted: {os.path.join(directory, file)}")
+                    if os.path.isdir(full_path):
+                        shutil.rmtree(full_path)
+                    else:
+                        os.remove(full_path)
+
+                    print(f"Deleted: {full_path}")
+
             except FileNotFoundError:
-                print(f"File not found: {os.path.join(directory, file)}")
+                print(f"File or directory not found: {full_path}")
             except Exception as e:
-                print(f"Error deleting {os.path.join(directory, file)}: {e}")
-        print("Files deleted successfully.")
+                print(f"Error deleting {full_path}: {e}")
+
+        print("Files and directories deleted successfully.")
     elif confirm == "n":
         print("Deletion canceled by the user.")
     else:
         print("Invalid input. Please enter 'y' or 'n'.")
 
 
+def get_user_type(userid) -> User_Type:
+    return User_Type.ROOT if userid == 0 else User_Type.REGULAR_USER
+
+
 def main() -> None:
     directory: Optional[str]
     files: Optional[List[str]]
+    user_type: User_Type = get_user_type(os.geteuid())
+
     directory, files = parse_command_line_arguments()
     if directory is None or files is None:
         return
 
-    found_files: List[str] = find_and_print_files(directory, files)
+    found_files: List[str] = find_and_print_files(directory, files, user_type)
 
-    delete_files(directory, found_files)
+    delete_files(directory, found_files, user_type)
 
 
 if __name__ == "__main__":
