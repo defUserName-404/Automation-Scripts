@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 
+import argparse
 from enum import Enum
 import os
 import shutil
 import subprocess
-from typing import List, Tuple, Optional
+import sys
+from typing import List, NoReturn, Tuple, Optional, Dict
 
 
 class User_Type(Enum):
@@ -13,98 +15,138 @@ class User_Type(Enum):
     REGULAR_USER = 1
 
 
-def show_help() -> None:
-    print("Usage: {} [OPTIONS]".format(os.path.basename(__file__)))
-    print()
-    print("OPTIONS:")
-    print("--help            Display this help message.")
-    print("--file FILE1 FILE2 ...  Specify files to search and delete.")
-    print(
-        "--directory DIR  Specify the directory to search for files. Default is the current working directory."
-    )
-    print()
-    print("Examples:")
-    print(
-        "{} --file file1 file2 --directory /path/to/search".format(
-            os.path.basename(__file__)
-        )
-    )
-    print("{} file1 /path/to/search".format(os.path.basename(__file__)))
+class CustomArgumentParser(argparse.ArgumentParser):
+    error_occurred = False
 
+    def error(self, message) -> NoReturn:
+        CustomArgumentParser.error_occurred = True
+        print_colored_text(f"Error: {message}", "red")
+        self.print_help()
+        self.exit(2)
 
-def parse_command_line_arguments() -> Tuple[Optional[str], Optional[List[str]]]:
-    directory: str = os.getcwd()
-    files: List[str] = []
-    args: List[str] = os.sys.argv
-    i: int = 1
-    n: int = len(args)
-
-    while i < n:
-        arg: str = args[i]
-        if arg == "--help" or arg == "-h":
-            show_help()
-            return None, None
-        elif arg == "--file" or arg == "-f":
-            i += 1
-            while i < n and not (args[i].startswith("--") or args[i].startswith("-")):
-                files.append(args[i])
-                i += 1
-            continue
-        elif arg == "--directory" or arg == "-d":
-            i += 1
-            directory = args[i]
+    def exit(self, status=0, message=None) -> None:
+        if message:
+            print_colored_text(message, "red")
+        if CustomArgumentParser.error_occurred:
+            sys.exit(status)
         else:
-            if n == 1:
-                show_help()
-                return None, None
-            elif n == 2:
-                files.append(arg)
-            elif n == 3:
-                files.append(arg)
-                directory = args[-1]
-            break
-        i += 1
+            raise SystemExit
 
-    return directory, files
+
+def print_colored_text(text: str, color: str) -> str:
+    colors: Dict[str, str] = {
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "purple": "\033[95m",
+        "reset": "\033[0m",
+    }
+    print(f"{colors[color]}{text}{colors['reset']}\n", end="")
+
+
+def parse_command_line_arguments() -> (
+    Tuple[Optional[str], Optional[List[str]], bool, bool]
+):
+    parser = CustomArgumentParser(
+        description="Find matching files in a directory and delete them"
+    )
+
+    if len(sys.argv) == 1 or CustomArgumentParser.error_occurred:
+        parser.print_help()
+        sys.exit(2)
+
+    # Check the number of arguments
+    if len(sys.argv) == 2:
+        # Case: Only one argument, treat it as a file
+        parser.add_argument("file", help="Specify the file")
+        args: argparse.Namespace = parser.parse_args()
+        return os.getcwd(), [args.file], False, False
+    elif len(sys.argv) == 3:
+        # Case: Two arguments, treat the first as a file and the second as a directory
+        parser.add_argument("file", help="Specify the file")
+        parser.add_argument("directory", help="Specify the directory")
+        args: argparse.Namespace = parser.parse_args()
+        return args.directory, [args.file], False, False
+    else:
+        parser.add_argument(
+            "--directory",
+            "-d",
+            type=str,
+            default=os.getcwd(),
+            help="Specify the directory",
+        )
+        parser.add_argument("--file", "-f", nargs="+", help="Specify one or more files")
+        parser.add_argument(
+            "--exact", "-e", action="store_true", help="Use exact file names"
+        )
+        parser.add_argument(
+            "--case-insensitive",
+            "-i",
+            action="store_true",
+            help="Perform case-insensitive matching",
+        )
+        args: argparse.Namespace = parser.parse_args()
+        return args.directory, args.file, args.exact, args.case_insensitive
 
 
 def find_and_print_files(
-    directory: str, files: List[str], user_type: User_Type
+    directory: str,
+    files: List[str],
+    user_type: User_Type,
+    is_exact_file_name: bool,
+    is_case_sensitive: bool,
 ) -> List[str]:
     found_files: List[str] = []
 
+    # Use os.path.join to construct the full path of the directory
+    full_directory: str = os.path.join(directory, "")
+
+    # Create a list of patterns for the find command
+    patterns: List[str] = []
     for pattern in files:
-        # Use os.path.join to construct the full path of the directory
-        find_command: str = f'find {os.path.join(directory, "")} -iname "*{pattern}*"'
-        # Check if the script is running with sudo
-        if user_type == User_Type.ROOT:
-            find_command = f"sudo {find_command}"
-        try:
-            # Use subprocess to run the find command
-            result: subprocess.CompletedProcess[str] = subprocess.run(
-                find_command, shell=True, check=True, text=True, capture_output=True
-            )
-            found_files.extend(result.stdout.splitlines())
-        except subprocess.CalledProcessError as e:
-            print(f"Error running find command: {e}")
+        if is_exact_file_name:
+            patterns.append(f"-name '{pattern}'")
+        elif is_case_sensitive:
+            patterns.append(f"-name '{pattern}'")
+        else:
+            patterns.append(f"-iname '*{pattern}*'")
+
+    # Construct the find command
+    find_command: str = f"find {full_directory} {' -o '.join(patterns)}"
+
+    # Check if the script is running with sudo
+    if user_type == User_Type.ROOT:
+        find_command = f"sudo {find_command}"
+
+    try:
+        # Use subprocess to run the find command
+        result: subprocess.CompletedProcess[str] = subprocess.run(
+            find_command, shell=True, check=True, text=True, capture_output=True
+        )
+        found_files.extend(result.stdout.splitlines())
+    except subprocess.CalledProcessError as e:
+        print(f"Error running find command: {e}")
+
+    if not found_files:
+        print_colored_text(
+            "No matching files or directories found in the specified directory.", "red"
+        )
+        return
+
+    print("Found the following files and directories:")
+    for item in found_files:
+        print_colored_text(item, "yellow")
 
     return found_files
 
 
 def delete_files(directory: str, found_files: List[str], user_type: User_Type) -> None:
-    if not found_files:
-        print("No matching files or directories found in the specified directory.")
-        return
-
-    print("Found the following files and directories:")
-    for item in found_files:
-        print(item)
-
     confirm: str = input("Do you want to proceed with the deletion? (y/n): ").lower()
 
     if confirm == "y":
         for item in found_files:
-            full_path = os.path.join(directory, item)
+            full_path: str = os.path.join(directory, item)
 
             try:
                 # Use sudo if the script is running with root privileges
@@ -123,11 +165,11 @@ def delete_files(directory: str, found_files: List[str], user_type: User_Type) -
             except Exception as e:
                 print(f"Error deleting {full_path}: {e}")
 
-        print("Files and directories deleted successfully.")
+        print_colored_text("Files and directories deleted successfully.", "green")
     elif confirm == "n":
-        print("Deletion canceled by the user.")
+        print_colored_text("Deletion cancelled by the user.", "red")
     else:
-        print("Invalid input. Please enter 'y' or 'n'.")
+        print_colored_text("Invalid input. Please enter 'y' or 'n'.", "red")
 
 
 def get_user_type(userid) -> User_Type:
@@ -137,15 +179,19 @@ def get_user_type(userid) -> User_Type:
 def main() -> None:
     directory: Optional[str]
     files: Optional[List[str]]
+    is_exact: bool
+    is_case_sensitive: bool
     user_type: User_Type = get_user_type(os.geteuid())
+    directory, files, is_exact, is_case_sensitive = parse_command_line_arguments()
 
-    directory, files = parse_command_line_arguments()
     if directory is None or files is None:
         return
 
-    found_files: List[str] = find_and_print_files(directory, files, user_type)
-
-    delete_files(directory, found_files, user_type)
+    found_files: List[str] = find_and_print_files(
+        directory, files, user_type, is_exact, is_case_sensitive
+    )
+    if found_files is not None:
+        delete_files(directory, found_files, user_type)
 
 
 if __name__ == "__main__":
