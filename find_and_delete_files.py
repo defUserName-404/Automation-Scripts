@@ -21,7 +21,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
     def error(self, message) -> NoReturn:
         CustomArgumentParser.error_occurred = True
         print_colored_text(f"Error: {message}", "red")
-        self.print_help()
+        self.print_custom_help()
         self.exit(2)
 
     def exit(self, status=0, message=None) -> None:
@@ -31,6 +31,33 @@ class CustomArgumentParser(argparse.ArgumentParser):
             sys.exit(status)
         else:
             raise SystemExit
+
+    def print_custom_help(self) -> None:
+        print_colored_text(
+            "\nFind matching files in a directory and delete them.\n", "blue"
+        )
+        print_colored_text(
+            f"Usage: {os.path.basename(__file__)} [options]\nOptions:", "purple"
+        )
+        options: str = "  -d, --directory   Specify the directory\n"
+        options += "  -f, --file        Specify one or more files\n"
+        options += "  -e, --exact       Use exact file names\n"
+        options += "  -i, --case-insensitive  Perform case-insensitive matching\n"
+        options += "  -h, --help Display the help text\n"
+        print_colored_text(options, "blue")
+        print_colored_text(
+            f"Positional Arguments: {os.path.basename(__file__)} [arguments]\nArguments:",
+            "purple",
+        )
+        arguments: str = "  FILE	The FILE to be searched\n  FILE DIRECTORY	The FILE IN the DIRECTORY to be searched\n"
+        print_colored_text(arguments, "blue")
+        print_colored_text("Example Usages:", "purple")
+        examples: str = f"{os.path.basename(__file__)} --file file1 file2 ... --directory /path/to/search"
+        examples += f"\n{os.path.basename(__file__)} --file file1 -ie"
+        examples += f"\n{os.path.basename(__file__)} --file file1 --directory /path/to/search --exact --case-insensitive"
+        examples += f"\n{os.path.basename(__file__)} file"
+        examples += f"\n{os.path.basename(__file__)} file /path/to/search"
+        print_colored_text(examples, "yellow")
 
 
 def print_colored_text(text: str, color: str) -> str:
@@ -52,8 +79,13 @@ def parse_command_line_arguments() -> (
         description="Find matching files in a directory and delete them"
     )
 
-    if len(sys.argv) == 1 or CustomArgumentParser.error_occurred:
-        parser.print_help()
+    if (
+        len(sys.argv) == 1
+        or CustomArgumentParser.error_occurred
+        or "--help" in sys.argv
+        or "-h" in sys.argv
+    ):
+        parser.print_custom_help()
         sys.exit(2)
 
     # Check the number of arguments
@@ -98,10 +130,8 @@ def find_and_print_files(
     is_case_sensitive: bool,
 ) -> List[str]:
     found_files: List[str] = []
-
     # Use os.path.join to construct the full path of the directory
     full_directory: str = os.path.join(directory, "")
-
     # Create a list of patterns for the find command
     patterns: List[str] = []
     for pattern in files:
