@@ -8,7 +8,7 @@ while true; do
 		if [[ $file == *.mp3 || $file == *.wav ]]; then
 			mkdir -p ~/Downloads/music
 			mv "$file" ~/Downloads/music/
-		elif [[ $file == *.jpg || $file == *.png || $file == *.jpeg || $file == *.gif || $file == *.webp ]]; then
+		elif [[ $file == *.jpg || $file == *.png || $file == *.jpeg || $file == *.gif || $file == *.webp || $file == *.svg ]]; then
 			mkdir -p ~/Downloads/images
 			mv "$file" ~/Downloads/images/
 		elif [[ $file == *.mp4 || $file == *.mov ]]; then
