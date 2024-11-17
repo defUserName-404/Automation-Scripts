@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os
 import sys
 
@@ -9,12 +11,12 @@ def swap_flutter_folders(directory):
 	temp_name = os.path.join(directory, "flutter-temp")
 
 	if os.path.exists(flutter_29) and os.path.exists(flutter):
-		print("Swapping 'flutter-29' with 'flutter'")
+		print("Making flutter version 29 the default")
 		os.rename(flutter, temp_name)
 		os.rename(flutter_29, flutter)
 		os.rename(temp_name, flutter_27)
 	elif os.path.exists(flutter_27) and os.path.exists(flutter):
-		print("Swapping 'flutter-27' with 'flutter'")
+		print("Making flutter version 27 the default")
 		os.rename(flutter, temp_name)
 		os.rename(flutter_27, flutter)
 		os.rename(temp_name, flutter_29)
@@ -22,11 +24,8 @@ def swap_flutter_folders(directory):
 		print("Required folders not found. Make sure 'flutter-29' and 'flutter' or 'flutter-27' and 'flutter' exist.")
 
 
-if __name__ == "__main__":
-	if len(sys.argv) != 2:
-		print("Usage: python swap_flutter_folders.py <directory>")
-		sys.exit(1)
 
+if __name__ == "__main__":
 	target_directory = sys.argv[1]
 	if not os.path.isdir(target_directory):
 		print("Invalid directory path.")
