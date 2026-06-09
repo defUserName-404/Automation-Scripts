@@ -2,14 +2,12 @@
 
 # Associative array to map file categories to their extensions
 declare -A filetypes=(
-  ["audio"]="mp3 wav"
-  ["image"]="jpg jpeg png gif webp svg gif"
-  ["video"]="mp4 mov mkv webm wmv"
-  ["pdf"]="pdf odf epub"
-  ["archive"]="zip tar gz bz2 xz"
-  ["package"]="deb rpm flatpakref"
-  ["executable"]="exe msi AppImage sh run"
-  ["document"]="csv ods xls xlsx txt docx doc ppt pptx"
+  ["audio"]="mp3 wav m4a flac aac ogg wma alac mid midi m4r aif"
+  ["image"]="jpg jpeg png gif webp svg tiff tif bmp ico heic heif raw cr2 nef dng psd"
+  ["video"]="mp4 mov mkv webm wmv avi flv m4v mpg mpeg 3gp srt"
+  ["archive"]="zip tar gz bz2 xz rar 7z sitx iso img dmg"
+  ["executable"]="deb rpm flatpakref snap appx msix bundles apk aab ipa ipsw pkg exe msi AppImage sh run bat cmd com jar ps1 bin elf command"
+  ["document"]="pdf csv ods xls xlsx txt docx doc ppt pptx md htm html epub odf rtf pages numbers key log py js ts tsx jsx html css scss sass c cpp h hpp cs java go rs rb php kt kts swift m mm pl pm r sh bash zsh fish sql json xml yaml yml ini conf toml gradle properties bak patch diff ipynb qmd rmd"
 )
 
 # Function to create necessary directories
